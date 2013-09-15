@@ -1,7 +1,7 @@
 --[[----------------------------------------------------------------------------
 
 Info.lua
-Summary information for DreanObjects plug-in
+Summary information for Pixorist plug-in
 
 --------------------------------------------------------------------------------
 
