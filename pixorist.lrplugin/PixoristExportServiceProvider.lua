@@ -184,9 +184,9 @@ exportServiceProvider.canExportVideo = true
 local function updateCantExportBecause( propertyTable )
 
     if not propertyTable.validKeys then
-        propertyTable.LR_cantExportBecause = LOC "$$$/Pixorist/ExportDialog/NoLogin=Incomplete Pixorist account setup: missing or invalid keys"
-    elseif not propertyTable.validBucket then
-        propertyTable.LR_cantExportBecause = LOC "$$$/Pixorist/ExportDialog/NoLogin=Incomplete Pixorist account setup: missing or invalid bucket"
+        propertyTable.LR_cantExportBecause = LOC "$$$/Pixorist/ExportDialog/NoLogin=Incomplete Pixorist account setup: missing or invalid API key"
+    elseif not propertyTable.validUsername then
+        propertyTable.LR_cantExportBecause = LOC "$$$/Pixorist/ExportDialog/NoLogin=Incomplete Pixorist account setup: missing or invalid username"
     else
         propertyTable.LR_cantExportBecause = nil
     end
@@ -273,21 +273,19 @@ function exportServiceProvider.startDialog( propertyTable )
 
     if not propertyTable.LR_editingExistingPublishConnection then
         prefs.apiKey = nil
-        prefs.sharedSecret = nil
-        prefs.bucket = nil
+        prefs.username = nil
     end
 
     -- Can't export until we've validated the login.
 
     propertyTable:addObserver( 'validKeys', function() updateCantExportBecause( propertyTable ) end )
-    propertyTable:addObserver( 'validBucket', function() updateCantExportBecause( propertyTable ) end )
+    propertyTable:addObserver( 'validUsername', function() updateCantExportBecause( propertyTable ) end )
     updateCantExportBecause( propertyTable )
 
     -- Make sure we're logged in.
 
     require 'PixoristUser'
-    PixoristUser.verifyKeys( propertyTable )
-    PixoristUser.verifyBucket( propertyTable )
+    PixoristUser.verifyCredentials( propertyTable )
 
 end
 
@@ -325,39 +323,18 @@ function exportServiceProvider.sectionsForTopOfDialog( f, propertyTable )
                 spacing = f:control_spacing(),
 
                 f:static_text {
-                    title = bind 'accountStatus',
+                    title = bind 'credentialsStatus',
                     alignment = 'left',
                     fill_horizontal = 1,
                 },
 
                 f:push_button {
-                    width = tonumber( LOC "$$$/locale_metric/Pixorist/ExportDialog/keysButton/Width=90" ),
-                    title = bind 'keysButtonTitle',
-                    enabled = bind 'keysButtonEnabled',
-                    action = function()
-                    require 'PixoristUser'
-                    PixoristUser.add_keys( propertyTable )
-                    end,
-                },
-
-            },
-
-            f:row {
-                spacing = f:control_spacing(),
-
-                f:static_text {
-                    title = bind 'bucketStatus',
-                    alignment = 'left',
-                    fill_horizontal = 1,
-                },
-
-                f:push_button {
-                    width = tonumber( LOC "$$$/locale_metric/Pixorist/ExportDialog/keysButton/Width=90" ),
-                    title = bind 'bucketNameTitle',
+                    width = tonumber( LOC "$$$/locale_metric/Pixorist/ExportDialog/credentialsButton/Width=140" ),
+                    title = bind 'credentialsNameTitle',
                     enabled = true,
                     action = function()
                     require 'PixoristUser'
-                    PixoristUser.add_bucket( propertyTable )
+                    PixoristUser.add_credentials( propertyTable )
                     end,
                 },
             },

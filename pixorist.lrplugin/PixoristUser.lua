@@ -17,7 +17,7 @@ local LrHttp = import 'LrHttp'
 
 local logger = import 'LrLogger'( 'PixoristAPI' )
 local prefs = import 'LrPrefs'.prefsForPlugin()
---logger:enable( 'logfile' )
+logger:enable( 'logfile' )
 
 require 'PixoristAPI'
 
@@ -28,128 +28,59 @@ PixoristUser = {}
 
 --------------------------------------------------------------------------------
 
-local function storedKeysAreValid( propertyTable )
-    return prefs.apiKey and string.len( prefs.apiKey ) > 0
-            and prefs.sharedSecret
+
+local function storedCredentialsAreValid( propertyTable )
+    logger:trace('in stored creds are valid check')
+    logger:trace('prefs username ', prefs.username)
+    logger:trace('prefs apiKey ', prefs.apiKey)
+	is_valid = prefs.username and string.len( prefs.username ) > 0
+			and prefs.apiKey and string.len( prefs.apiKey ) > 0 
+    logger:trace("credentials are valid? --> ", is_valid)
+    return is_valid
 end
 
-local function storedBucketIsValid( propertyTable )
-    local valid_prefs =  prefs.bucket and string.len( prefs.bucket ) > 0
-    local valid_bucket = propertyTable.validBucket == true or propertyTable.validBucket == nil
-    return valid_prefs and valid_bucket
-end
 
 
 --------------------------------------------------------------------------------
 
-local function noKeys( propertyTable )
-    logger:trace("noKeys being called")
 
-    --prefs.apiKey = nil
-    --prefs.sharedSecret = nil
-
-    propertyTable.accountStatus = LOC "$$$/Pixorist/AccountStatus/NotLoggedIn=No valid keys"
-    propertyTable.keysButtonTitle = LOC "$$$/Pixorist/keysButton/NotLoggedIn=Add keys"
-    propertyTable.keysButtonEnabled = true
-    propertyTable.validKeys = false
-
-end
-
-local function noBucket( propertyTable )
-    logger:trace("noBucket being called")
-    --prefs.bucket = nil
-    propertyTable.bucketButtonTitle = LOC "$$$/Pixorist/BucketButton/NoBucket=Add bucket"
-    propertyTable.bucketButtonEnabled = true
-    --propertyTable.validBucket = false
-    propertyTable.bucketNameTitle = LOC "$$$/Pixorist/BucketButton/NoBucket=Add bucket"
-    if not prefs.bucket then
-        propertyTable.bucketStatus = LOC "$$$/Pixorist/BucketButton/HasBucket=No valid bucket"
+local function noCredentials( propertyTable )
+    logger:trace("noCredentials being called")
+    propertyTable.credentialsButtonTitle = LOC "$$$/Pixorist/credentialsButton/NoCredentials=Add"
+    propertyTable.credentialsButtonEnabled = true
+    propertyTable.validCredentials = false
+    propertyTable.credentialsNameTitle = LOC "$$$/Pixorist/credentialsButton/NoCredentials=Add"
+    if not prefs.username and not prefs.apiKey then
+        propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=No credentials stored"
+    elseif prefs.apiKey and not prefs.apiKey == nil then
+        logger:trace("evaluated apiKey as True")
+        propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=Invalid API Key"
+    elseif prefs.username and not prefs.username == nil then
+        logger:trace("evaluated username as True")
+        propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=No valid username"
+    --elseif prefs.apiKey and not prefs.username then
+    --    propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=No valid username"
+    --elseif prefs.username and not prefs.apiKey then
+    --    propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=Invalid API Key"
     else
-        propertyTable.bucketStatus = LOC "$$$/Pixorist/BucketButton/HasBucket=Invalid bucket"
+        propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=No credentials stored"
     end
+    logger:trace("no creds: username: ", prefs.username)
+    logger:trace("no creds: apiKey: ", prefs.apiKey)
 
 end
 
-doingBucket = false
 
-function PixoristUser.validate_bucket( propertyTable )
-
-        local do_url =   'http://' .. prefs.bucket .. ".objects.pixorist.com"
-        local result, hdrs = LrHttp.get( do_url )
-        logger:trace('Validating bucket against url ', do_url)
-        logger:trace('Response from bucket validation ', hdrs['status'])
-        local is_valid = hdrs['status'] == 200 or hdrs['status'] == 403
-        logger:trace('is valid value ' ,  is_valid)
-        return  hdrs['status'] == 200 or hdrs['status'] == 403
-end
-
---------------------------------------------------------------------------------
-
-function PixoristUser.add_bucket( propertyTable )
+function PixoristUser.add_credentials( propertyTable )
     if not propertyTable.LR_editingExistingPublishConnection then
-        noBucket( propertyTable )
-    end
-    require 'PixoristAPI'
-    PixoristAPI.showBucketDialog()
-
-    LrFunctionContext.postAsyncTaskWithContext( 'Pixorist add_bucket',
-    function( context )
-
-        doingBucket = true
-
-        propertyTable.bucketStatus = LOC "$$$/Pixorist/BucketStatus/Status=Verifying bucket..."
-        propertyTable.BucketButtonEnabled = false
-
-        LrDialogs.attachErrorDialogToFunctionContext( context )
-
-        -- Make sure bucket is valid when done, or is marked as invalid.
-
-        context:addCleanupHandler( function()
-            doingBucket = false
-
-            if not storedBucketIsValid( propertyTable ) then
-                logger:trace("cleanup handler saw an invalid bucket")
-                noBucket( propertyTable )
-            end
-
-        end )
-
-        -- Make sure we have an API key.
-        PixoristAPI.getApiKeyAndSecret()
-
-        require 'PixoristAPI'
-        local is_valid = PixoristUser.validate_bucket()
-        logger:trace('receiving is_valid value ', is_valid)
-
-        if is_valid then
-            propertyTable.bucketButtonEnabled = true
-            propertyTable.validBucket = true
-            propertyTable.bucketStatus = string.format('Bucket: %s', prefs.bucket)
-            propertyTable.bucketNameTitle = LOC "$$$/Pixorist/BucketStatus/Status=Edit bucket"
-            logger:trace('Bucket is valid woooo!')
-        else
-            propertyTable.validBucket = false
-            propertyTable.bucketNameTitle = LOC "$$$/Pixorist/BucketStatus/Status=Edit bucket"
-            propertyTable.bucketStatus = LOC( "$$$/Pixorist/BucketStatus/HasBucket=Invalid bucket")
-            propertyTable.bucketStatus = "Invalid bucket"
-        end
-        doingBucket = false
-
-    end )
-
-
-
-end
-
-
-function PixoristUser.add_keys( propertyTable )
-    if not propertyTable.LR_editingExistingPublishConnection then
-        noKeys( propertyTable )
+        noCredentials( propertyTable )
     end
 
     require 'PixoristAPI'
-    PixoristAPI.showApiKeyDialog()
+    PixoristAPI.showCredentialsDialog( propertyTable )
     propertyTable.validKeys = true
+    propertyTable.validUsername = true
+    propertyTable.validCredentials = true
 end
 
 
@@ -174,60 +105,33 @@ end
 
 --------------------------------------------------------------------------------
 
-function PixoristUser.verifyKeys( propertyTable )
+function PixoristUser.verifyCredentials( propertyTable )
 
     -- Observe changes to prefs and update status message accordingly.
 
     local function updateStatus()
-        logger:trace( "verifyKeys: updateStatus() was triggered." )
 
         LrTasks.startAsyncTask( function()
-            logger:trace( "verifyKeys: updateStatus() is executing." )
-            if storedKeysAreValid( propertyTable ) then
+            logger:trace( "verifyCredentials: updateStatus() is executing." )
+            if storedCredentialsAreValid( propertyTable ) then
+                logger:trace("credentials are valid it seems!")
 
-                propertyTable.accountStatus = LOC( "$$$/Pixorist/AccountStatus/LoggedIn=Key pairs stored")
-                propertyTable.keysButtonTitle = LOC "$$$/Pixorist/keysButton/LogInAgain=Edit keys"
-                propertyTable.keysButtonEnabled = true
+                propertyTable.credentialsNameTitle = LOC "$$$/Pixorist/credentialsButton/EditCredentials=Edit credentials"
+                propertyTable.credentialsButtonEnabled = true
+                propertyTable.validCredentials = true
+                propertyTable.validUsername = true
                 propertyTable.validKeys = true
+                propertyTable.credentialsStatus = string.format('Credentials stored!')
             else
-                noKeys( propertyTable )
+                logger:trace('[WARN] credentials are not valid so clearing it')
+                noCredentials( propertyTable )
             end
 
         end )
 
     end
 
-    propertyTable:addObserver( 'validKeys', updateStatus )
+    propertyTable:addObserver( 'username', updateStatus )
+    propertyTable:addObserver( 'apiKey', updateStatus )
     updateStatus()
-
-end
-
-
-function PixoristUser.verifyBucket( propertyTable )
-
-    -- Observe changes to prefs and update status message accordingly.
-
-    local function updateStatus()
-
-        LrTasks.startAsyncTask( function()
-            logger:trace( "verifyBucket: updateStatus() is executing." )
-            if storedBucketIsValid( propertyTable ) then
-
-                propertyTable.bucketNameTitle = LOC "$$$/Pixorist/BucketButton/EditBucket=Edit bucket"
-                propertyTable.bucketButtonEnabled = true
-                propertyTable.validBucket = true
-                propertyTable.bucketStatus = string.format('Bucket: %s', prefs.bucket)
-
-            else
-                logger:trace('bucket was not valid so clearing it')
-                noBucket( propertyTable )
-            end
-
-        end )
-
-    end
-
-    propertyTable:addObserver( 'validBucket', updateStatus )
-    updateStatus()
-
 end
