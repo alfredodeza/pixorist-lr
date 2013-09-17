@@ -21,6 +21,7 @@ local LrPathUtils = import 'LrPathUtils'
 local LrView = import 'LrView'
 local LrXml = import 'LrXml'
 local LrTasks = import 'LrTasks'
+local LrStringUtils = import 'LrStringUtils'
 
 local prefs = import 'LrPrefs'.prefsForPlugin()
 
@@ -195,84 +196,35 @@ function PixoristAPI.showCredentialsDialog( propertyTable )
 end
 
 --------------------------------------------------------------------------------
--- 
--- function PixoristAPI.getApiKeyAndSecret()
--- 
---     local apiKey, sharedSecret = prefs.apiKey, prefs.sharedSecret
---     return apiKey, sharedSecret
--- 
--- end
--- 
--- --------------------------------------------------------------------------------
--- 
--- function PixoristAPI.makeApiSignature( params )
--- 
---     -- If no API key, add it in now.
--- 
---     local apiKey, sharedSecret = PixoristAPI.getApiKeyAndSecret()
--- 
---     if not params.api_key then
---         params.api_key = apiKey
---     end
--- 
---     -- Get list of arguments in sorted order.
--- 
---     local argNames = {}
---     for name in pairs( params ) do
---         table.insert( argNames, name )
---     end
--- 
---     table.sort( argNames )
--- 
---     -- Build the secret string to be MD5 hashed.
--- 
---     local allArgs = sharedSecret
---     for _, name in ipairs( argNames ) do
---         if params[ name ] then  -- might be false
---             allArgs = string.format( '%s%s%s', allArgs, name, params[ name ] )
---         end
---     end
--- 
---     -- MD5 hash this string.
--- 
---     return LrMD5.digest( allArgs )
--- 
--- end
--- 
+
+function BasicAuthHeaders( username, apiKey )
+    credentials = username .. ":" .. apiKey
+    local base64data = LrStringUtils.encodeBase64(credentials)
+    local authorization = 'Basic ' .. base64data
+
+    local headers = {
+        { field = 'Authorization', value = authorization},
+    }
+    return headers
+
+end
+
 --------------------------------------------------------------------------------
 
--- function PixoristAPI.callRestMethod( propertyTable, params )
--- 
---     -- Automatically add API key.
--- 
---     local apiKey = PixoristAPI.getApiKeyAndSecret()
--- 
---     if not params.api_key then
---         params.api_key = apiKey
---     end
--- 
---     -- Remove any special values from params.
--- 
---     local suppressError = params.suppressError
---     local suppressErrorCodes = params.suppressErrorCodes
---     local skipAuthToken = params.skipAuthToken
--- 
---     params.suppressError = nil
---     params.suppressErrorCodes = nil
---     params.skipAuthToken = nil
--- 
--- end
--- 
--- 
 function PixoristAPI.create( fileName, filePath)
 
-    -- FIXME: this needs to be an HTTP request
-    result = runcommand('python ' .. _PLUGIN.path .. '/s3.py create ' .. prefs.apiKey .. ' ' .. prefs.sharedSecret .. ' ' .. prefs.bucket .. ' ' .. fileName .. ' ' .. filePath)
-    if not (result == 0) then
-		LrErrors.throwUserError( formatError( result ) )
+    local upload_url = "http://upload.pixorist.com/users/" .. prefs.username .. "/upload"
+    local headers = BasicAuthHeaders(prefs.username, prefs.apiKey )
+    local result, hdrs = LrHttp.postMultipart(
+        upload_url,
+        {{filePath=filePath, fileName=fileName, name='file', contentType = 'image/jpeg'}},
+        headers,
+        10)
+
+    if not hdrs['status'] == 200 then
+        LrErrors.throwUserError( formatError( result) )
         LrErrors.throwCanceled()
     end
-
 end
 
 
