@@ -34,7 +34,7 @@ local function storedCredentialsAreValid( propertyTable )
     logger:trace('prefs username ', prefs.username)
     logger:trace('prefs apiKey ', prefs.apiKey)
 	is_valid = prefs.username and string.len( prefs.username ) > 0
-			and prefs.apiKey and string.len( prefs.apiKey ) > 0 
+			and prefs.apiKey and string.len( prefs.apiKey ) > 0
     logger:trace("credentials are valid? --> ", is_valid)
     return is_valid
 end
@@ -58,10 +58,10 @@ local function noCredentials( propertyTable )
     elseif prefs.username and not prefs.username == nil then
         logger:trace("evaluated username as True")
         propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=No valid username"
-    --elseif prefs.apiKey and not prefs.username then
-    --    propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=No valid username"
-    --elseif prefs.username and not prefs.apiKey then
-    --    propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=Invalid API Key"
+    elseif prefs.apiKey and not prefs.username then
+        propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=No valid username"
+    elseif prefs.username and not prefs.apiKey then
+        propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=Invalid API Key"
     else
         propertyTable.credentialsStatus = LOC "$$$/Pixorist/credentialsButton/HasCredentials=No credentials stored"
     end
