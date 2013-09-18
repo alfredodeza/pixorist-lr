@@ -43,6 +43,7 @@ local appearsAlive
 
 local function formatError( nativeErrorCode )
     local error_map = { '400 Bad request',
+                        '401 Unauthorized',
                         '403 Forbidden',
                         '405 Method not Allowed',
                         '409 Conflict',
@@ -213,7 +214,7 @@ end
 
 function PixoristAPI.create( fileName, filePath)
 
-    local upload_url = "http://upload.pixorist.com/users/" .. prefs.username .. "/upload"
+    local upload_url = "http://upload.pixorist.com/users/" .. prefs.username .. "/upload/"
     local headers = BasicAuthHeaders(prefs.username, prefs.apiKey )
     local result, hdrs = LrHttp.postMultipart(
         upload_url,
@@ -221,8 +222,11 @@ function PixoristAPI.create( fileName, filePath)
         headers,
         10)
 
-    if not hdrs['status'] == 200 then
-        LrErrors.throwUserError( formatError( result) )
+    logger:trace("result ", result)
+    logger:trace("Headers ", hdrs)
+    logger:trace("Headers status --> ", hdrs['status'])
+    if hdrs['status'] >= 400 then
+        LrErrors.throwUserError( formatError( hdrs['status']) )
         LrErrors.throwCanceled()
     end
 end
